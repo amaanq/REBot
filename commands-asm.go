@@ -133,7 +133,7 @@ func cmdDisassemble(params cmdArguments) {
 		offset := 0
 
 		// Use the gapstone library for disassembly
-		if gs, err := gapstone.New(arch, uint(mode)); err == nil {
+		if gs, err := gapstone.New(arch, int(mode)); err == nil {
 			defer gs.Close()
 
 			// Use intel syntax for x86 because AT&T syntax is ugly
