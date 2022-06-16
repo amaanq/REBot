@@ -11,13 +11,19 @@ import (
 	"github.com/keystone-engine/keystone/bindings/go/keystone"
 )
 
+var (
+	X86Header  = "x86asm"
+	ARMHeader  = "armasm"
+	MIPSHeader = "mipsasm"
+)
+
 // Assembles the given instructions into opcodes via the given architecture
 func cmdAssemble(params cmdArguments) {
 	s := params.s
 	m := params.m
 	args := params.args
 
-	asmArch  	 := args[1]
+	asmArch := args[1]
 	instructions := ""
 
 	// Stitch together the rest of the arguments for the instructions
@@ -27,8 +33,8 @@ func cmdAssemble(params cmdArguments) {
 		}
 	}
 
-	if arch, mode := parseArchitectureKeystone(asmArch); arch != ^keystone.Architecture(0) && mode != ^keystone.Mode(0) {
-		outMsg := "Assembly: ```x86asm\n"
+	if arch, mode, header := parseArchitectureKeystone(asmArch); arch != ^keystone.Architecture(0) && mode != ^keystone.Mode(0) {
+		outMsg := "Assembly: ```" + header + "\n"
 
 		// Longest instruction string, used for display padding
 		maxInstructionLength := 0
@@ -56,7 +62,7 @@ func cmdAssemble(params cmdArguments) {
 				// Use intel syntax for x86 because AT&T syntax is ugly
 				if arch == keystone.ARCH_X86 {
 					if err := ks.Option(keystone.OPT_SYNTAX, keystone.OPT_SYNTAX_INTEL); err != nil {
-						_, _ = s.ChannelMessageSend(m.ChannelID, "Failed to set keystone option")
+						s.ChannelMessageSend(m.ChannelID, "Failed to set keystone option")
 						return
 					}
 				}
@@ -81,24 +87,24 @@ func cmdAssemble(params cmdArguments) {
 
 				} else {
 					// Keystone assembler failed
-					_, _ = s.ChannelMessageSend(m.ChannelID, "Could not assemble the given assembly. Are the instructions valid?")
+					s.ChannelMessageSend(m.ChannelID, "Could not assemble the given assembly. Are the instructions valid?")
 					return
 				}
 			}
 
 			// Keystone assembler succeeded, give the user the output
-			_, _ = s.ChannelMessageSend(m.ChannelID, outMsg + "```")
+			s.ChannelMessageSend(m.ChannelID, outMsg+"```")
 			return
 		}
 
 		// If we reached this point, it's because keystone's engine failed to initialize
-		_, _ = s.ChannelMessageSend(m.ChannelID, "Keystone engine is not working! :(")
+		s.ChannelMessageSend(m.ChannelID, "Keystone engine is not working! :(")
 	} else {
 		supportedArchs := "```"
 		supportedArchs += "x86, x86_64/x64, arm, thumb, arm64/aarch64, ppc/ppc32, ppc64, mips/mips32, mips64"
 		supportedArchs += "```"
 
-		_, _ = s.ChannelMessageSend(m.ChannelID, "Architecture not supported! Supported architectures: " + supportedArchs)
+		s.ChannelMessageSend(m.ChannelID, "Architecture not supported! Supported architectures: "+supportedArchs)
 	}
 }
 
@@ -117,23 +123,23 @@ func cmdDisassemble(params cmdArguments) {
 			opcodes += args[i]
 		}
 	}
-	
+
 	// Allow some flexibility in input (ie. allow 0x, ;)
 	opcodes = strings.Replace(opcodes, ";", "", -1)
 	opcodes = strings.Replace(opcodes, "0x", "", -1)
 
-	if arch, mode := parseArchitectureCapstone(asmArch); arch != -1 && mode != -1 {
-		outMsg := "Disassembly: ```x86asm\n"
+	if arch, mode, header := parseArchitectureCapstone(asmArch); arch != -1 && mode != -1 {
+		outMsg := "Disassembly: ```" + header + "\n"
 
 		// Max str lengths, used for display padding
-		maxMnemonicLength 	:= 0
-		maxOpStrLength 		:= 0
+		maxMnemonicLength := 0
+		maxOpStrLength := 0
 
 		// Offset counter, used only in display output
 		offset := 0
 
 		// Use the gapstone library for disassembly
-		if gs, err := gapstone.New(arch, uint(mode)); err == nil {
+		if gs, err := gapstone.New(arch, mode); err == nil {
 			defer gs.Close()
 
 			// Use intel syntax for x86 because AT&T syntax is ugly
@@ -184,7 +190,7 @@ func cmdDisassemble(params cmdArguments) {
 				}
 
 				// Disassembler succeeded, give the user the output
-				_, _ = s.ChannelMessageSend(m.ChannelID, outMsg + "```")
+				_, _ = s.ChannelMessageSend(m.ChannelID, outMsg+"```")
 				return
 			} else {
 				// Failed to decode the string into raw binary data - must be invalid hex
@@ -200,7 +206,7 @@ func cmdDisassemble(params cmdArguments) {
 		supportedArchs += "x86, x86_64/x64, arm, thumb, arm64/aarch64, ppc/ppc32, ppc64, mips/mips32, mips64"
 		supportedArchs += "```"
 
-		_, _ = s.ChannelMessageSend(m.ChannelID, "Architecture not supported! Supported architectures: " + supportedArchs)
+		_, _ = s.ChannelMessageSend(m.ChannelID, "Architecture not supported! Supported architectures: "+supportedArchs)
 	}
 }
 
@@ -227,11 +233,11 @@ func cmdManual(params cmdArguments) {
 		supportedArchs += "x86, x86_64/x64, arm, arm64/aarch64, ppc/ppc32, ppc64, mips/mips32, mips64"
 		supportedArchs += "```"
 
-		_, _ = s.ChannelMessageSend(m.ChannelID, "Architecture not supported! Supported architectures: " + supportedArchs)
+		_, _ = s.ChannelMessageSend(m.ChannelID, "Architecture not supported! Supported architectures: "+supportedArchs)
 		return
 	}
 
-	_, _ = s.ChannelMessageSend(m.ChannelID, "Here you go: " + url)
+	_, _ = s.ChannelMessageSend(m.ChannelID, "Here you go: "+url)
 }
 
 // Gives a random reverse engineering trick
@@ -241,7 +247,7 @@ func cmdReTrick(params cmdArguments) {
 
 	rand.Seed(time.Now().Unix())
 
-	tricks := []string {
+	tricks := []string{
 		"When possible, use a debugger to trace user input in a function",
 		"Viewing strings is very helpful",
 		"IDA: IDA has a quick action dropdown to the right of the breakdown bar https://i.imgur.com/TmtXE1O.png",
@@ -265,7 +271,7 @@ func cmdExploitTrick(params cmdArguments) {
 
 	rand.Seed(time.Now().Unix())
 
-	tricks := []string {
+	tricks := []string{
 		"Use infloop gadgets in ROP chains for blind debugging",
 		"For use-after-free exploits, try empty heap spraying after code execution to stabilize the process if it's a critical object",
 		"The power of going straight from a bug to PC/IP control is overrated, other primitives like arbitrary R/W are often easier and just as powerful",
@@ -283,53 +289,53 @@ func cmdExploitTrick(params cmdArguments) {
 }
 
 // Returns the proper keystone architecture based on the user input string
-func parseArchitectureKeystone(arch string) (keystone.Architecture, keystone.Mode) {
+func parseArchitectureKeystone(arch string) (keystone.Architecture, keystone.Mode, string) {
 	switch arch {
 	case "x86":
-		return keystone.ARCH_X86, keystone.MODE_32
+		return keystone.ARCH_X86, keystone.MODE_32, X86Header
 	case "x64", "x86_64", "x86-64":
-		return keystone.ARCH_X86, keystone.MODE_64
+		return keystone.ARCH_X86, keystone.MODE_64, X86Header
 	case "arm":
-		return keystone.ARCH_ARM, keystone.MODE_ARM
+		return keystone.ARCH_ARM, keystone.MODE_ARM, ARMHeader
 	case "thumb":
-		return keystone.ARCH_ARM, keystone.MODE_THUMB
+		return keystone.ARCH_ARM, keystone.MODE_THUMB, ARMHeader
 	case "aarch64", "arm64":
-		return keystone.ARCH_ARM64, keystone.MODE_LITTLE_ENDIAN
+		return keystone.ARCH_ARM64, keystone.MODE_LITTLE_ENDIAN, ARMHeader
 	case "ppc", "ppc32":
-		return keystone.ARCH_PPC, keystone.MODE_PPC32 | keystone.MODE_BIG_ENDIAN
+		return keystone.ARCH_PPC, keystone.MODE_PPC32 | keystone.MODE_BIG_ENDIAN, ARMHeader
 	case "ppc64":
-		return keystone.ARCH_PPC, keystone.MODE_PPC64
+		return keystone.ARCH_PPC, keystone.MODE_PPC64, ARMHeader
 	case "mips", "mips32":
-		return keystone.ARCH_MIPS, keystone.MODE_MIPS32 | keystone.MODE_BIG_ENDIAN
+		return keystone.ARCH_MIPS, keystone.MODE_MIPS32 | keystone.MODE_BIG_ENDIAN, MIPSHeader
 	case "mips64":
-		return keystone.ARCH_MIPS, keystone.MODE_MIPS64
+		return keystone.ARCH_MIPS, keystone.MODE_MIPS64, MIPSHeader
 	default:
-		return ^keystone.Architecture(0), ^keystone.Mode(0)
+		return ^keystone.Architecture(0), ^keystone.Mode(0), ""
 	}
 }
 
 // Returns the proper capstone architecture based on the user input string
-func parseArchitectureCapstone(arch string) (int, int) {
+func parseArchitectureCapstone(arch string) (int, int, string) {
 	switch arch {
 	case "x86":
-		return gapstone.CS_ARCH_X86, gapstone.CS_MODE_32
+		return gapstone.CS_ARCH_X86, gapstone.CS_MODE_32, X86Header
 	case "x64", "x86_64", "x86-64":
-		return gapstone.CS_ARCH_X86, gapstone.CS_MODE_64
+		return gapstone.CS_ARCH_X86, gapstone.CS_MODE_64, X86Header
 	case "arm":
-		return gapstone.CS_ARCH_ARM, gapstone.CS_MODE_ARM
+		return gapstone.CS_ARCH_ARM, gapstone.CS_MODE_ARM, ARMHeader
 	case "thumb":
-		return gapstone.CS_ARCH_ARM, gapstone.CS_MODE_THUMB
+		return gapstone.CS_ARCH_ARM, gapstone.CS_MODE_THUMB, ARMHeader
 	case "aarch64", "arm64":
-		return gapstone.CS_ARCH_ARM64, gapstone.CS_MODE_ARM
+		return gapstone.CS_ARCH_ARM64, gapstone.CS_MODE_ARM, ARMHeader
 	case "ppc", "ppc32":
-		return gapstone.CS_ARCH_PPC, gapstone.CS_MODE_BIG_ENDIAN
+		return gapstone.CS_ARCH_PPC, gapstone.CS_MODE_BIG_ENDIAN, ARMHeader
 	case "ppc64":
-		return gapstone.CS_ARCH_PPC, gapstone.CS_MODE_LITTLE_ENDIAN
+		return gapstone.CS_ARCH_PPC, gapstone.CS_MODE_LITTLE_ENDIAN, ARMHeader
 	case "mips", "mips32":
-		return gapstone.CS_ARCH_MIPS, gapstone.CS_MODE_MIPS32 | gapstone.CS_MODE_BIG_ENDIAN
+		return gapstone.CS_ARCH_MIPS, gapstone.CS_MODE_MIPS32 | gapstone.CS_MODE_BIG_ENDIAN, MIPSHeader
 	case "mips64":
-		return gapstone.CS_ARCH_MIPS, gapstone.CS_MODE_MIPS64 | gapstone.CS_MODE_LITTLE_ENDIAN
+		return gapstone.CS_ARCH_MIPS, gapstone.CS_MODE_MIPS64 | gapstone.CS_MODE_LITTLE_ENDIAN, MIPSHeader
 	default:
-		return -1, -1
+		return -1, -1, ""
 	}
 }

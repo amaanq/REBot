@@ -1,13 +1,13 @@
 package main
 
-import(
+import (
 	"github.com/bwmarrin/discordgo"
 )
 
 // Packs command arguments into one struct to avoid unused argument warnings
 type cmdArguments struct {
-	s 	 *discordgo.Session
-	m 	 *discordgo.MessageCreate
+	s    *discordgo.Session
+	m    *discordgo.MessageCreate
 	args []string
 }
 
@@ -16,12 +16,12 @@ type cmdHandler func(args cmdArguments)
 
 // Represents a command - each command must have it's own unique Command object
 type Command struct {
-	name string
-	aliases []string
+	name         string
+	aliases      []string
 	requiredArgs int
-	usage string
-	handler cmdHandler
-	dev bool
+	usage        string
+	handler      cmdHandler
+	dev          bool
 }
 
 // Stores the list of command names to Command objects
@@ -38,7 +38,7 @@ func command(s *discordgo.Session, m *discordgo.MessageCreate, args []string, cm
 
 		for _, commandCheck := range commandMap {
 			if searchAliases(cmd, commandCheck.aliases) {
-				command  = commandCheck
+				command = commandCheck
 				foundCmd = true
 				break
 			}
@@ -56,7 +56,7 @@ func command(s *discordgo.Session, m *discordgo.MessageCreate, args []string, cm
 
 	// Ensure the required argument count is met
 	if len(args) < command.requiredArgs {
-		_, _ = s.ChannelMessageSend(m.ChannelID, "Usage: !" + command.name + " " + command.usage)
+		_, _ = s.ChannelMessageSend(m.ChannelID, "Usage: !"+command.name+" "+command.usage)
 		return
 	}
 
@@ -131,7 +131,7 @@ func buildCommandMap() {
 		false)
 
 	addCommand("commands",
-		[]string{"cmds"},
+		[]string{"cmds", "help"},
 		0,
 		"",
 		cmdCommands,
@@ -145,11 +145,11 @@ func buildCommandMap() {
 		false)
 
 	/*addCommand("readelf",
-		[]string{"elf"},
-		2,
-		"[link] {options ...}",
-		cmdReadelf,
-		false)*/
+	[]string{"elf"},
+	2,
+	"[link] {options ...}",
+	cmdReadelf,
+	false)*/
 
 	// Developer Only Commands
 
@@ -219,13 +219,13 @@ func buildCommandMap() {
 
 // Adds a command to the command map
 func addCommand(name string, aliases []string, requiredArgs int, usage string, handler cmdHandler, devOnly bool) {
-	cmd := Command {
-		name: name,
-		aliases: aliases,
+	cmd := Command{
+		name:         name,
+		aliases:      aliases,
 		requiredArgs: requiredArgs,
-		usage: usage,
-		handler: handler,
-		dev: devOnly}
+		usage:        usage,
+		handler:      handler,
+		dev:          devOnly}
 
 	commandMap[name] = cmd
 }
@@ -248,7 +248,7 @@ func cmdCommands(params cmdArguments) {
 	commands += "!commands/cmds - You are here.\n"
 	commands += "```"
 
-	_, _ = s.ChannelMessageSend(m.ChannelID, "Here's a list of my commands: " + commands)
+	_, _ = s.ChannelMessageSend(m.ChannelID, "Here's a list of my commands: "+commands)
 }
 
 // Motivation!
